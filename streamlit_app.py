@@ -25,10 +25,10 @@ def set_theme():
         color: #ffffff;
     }}
     .st-b7, .st-cg, .st-ch, .st-ci {{
-        color: #ffffff !important;
+        color: #red !important;
     }}
     .stButton>button {{
-        color: #ffffff;
+        color: #red;
         background-color: #1a2a4a;
         border: 1px solid #4cc9f0;
         border-radius: 5px;
@@ -141,7 +141,7 @@ def tweets_page():
         for post in st.session_state.posts:
             st.markdown(f"""
             <div class="tweet-card">
-                <p style="color: white; margin-bottom: 10px;">{post['notes']}</p>
+                <p style="red: white; margin-bottom: 10px;">{post['notes']}</p>
                 {f'<img src="data:image/png;base64,{post["screenshot"]}" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;">' if post['screenshot'] else ''}
                 <div style="font-size: 1.5rem;">{post['reaction']}</div>
             </div>
