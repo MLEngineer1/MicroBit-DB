@@ -31,7 +31,7 @@ COMMON_PAIRS = [
     "EURUSD", "GBPUSD", "AUDUSD", "USDCAD", "GOLD"
 ]
 
-# Set dark theme
+# Set dark theme with improved UI elements
 def set_theme():
     st.markdown(f"""
     <style>
@@ -47,29 +47,27 @@ def set_theme():
         background-color: var(--background);
         color: var(--text);
     }}
-    .st-b7, .st-cg, .st-ch, .st-ci, .stTextInput>div>div>input, .stNumberInput>div>div>input,
-    .stTextArea>div>div>textarea, .stSelectbox>div>div>select, .stDateInput>div>div>input {{
-        color: var(--text) !important;
-    }}
-    .stButton>button {{
-        color: var(--text);
-        background-color: var(--card);
-        border: 1px solid var(--primary);
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
-    }}
-    .stButton>button:hover {{
-        color: var(--text);
-        background-color: #2a3a5a;
-        border: 1px solid var(--primary);
-    }}
-    .metric-card {{
+    .metric-tile {{
         background-color: var(--card);
         border-radius: 10px;
         padding: 15px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         border-left: 4px solid var(--primary);
+    }}
+    .metric-title {{
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }}
+    .metric-value {{
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--text);
+    }}
+    .metric-delta {{
+        font-size: 0.9rem;
+        margin-top: 5px;
     }}
     .positive {{
         color: var(--primary);
@@ -77,10 +75,40 @@ def set_theme():
     .negative {{
         color: var(--danger);
     }}
+    .tweet-card {{
+        background-color: var(--card);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }}
+    .tweet-header {{
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }}
+    .tweet-metrics {{
+        display: flex;
+        gap: 15px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }}
+    .tweet-metric {{
+        background-color: #2a3a5a;
+        padding: 8px 12px;
+        border-radius: 8px;
+        min-width: 80px;
+    }}
+    .tweet-metric-value {{
+        font-weight: bold;
+        margin-top: 3px;
+    }}
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {{
+        font-size: 1rem;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# Calculate analytics
 def calculate_analytics():
     if not st.session_state.posts:
         return {}
@@ -92,14 +120,12 @@ def calculate_analytics():
     df['quarter'] = (df['date'].dt.month - 1) // 3 + 1
     df['year'] = df['date'].dt.year
     
-    # Current date filters
     today = datetime.now().date()
     current_week = datetime.now().isocalendar()[1]
     current_month = datetime.now().month
     current_quarter = (datetime.now().month - 1) // 3 + 1
     current_year = datetime.now().year
     
-    # Timeframe calculations
     timeframes = {
         'daily': df[df['date'].dt.date == today],
         'weekly': df[(df['date'].dt.isocalendar().week == current_week) & 
@@ -116,7 +142,6 @@ def calculate_analytics():
     for timeframe, data in timeframes.items():
         timeframe_data = {}
         
-        # Platform-specific analytics
         platform_metrics = {}
         for platform in TRADING_PLATFORMS:
             platform_df = data[data['trading_platform'] == platform]
@@ -129,7 +154,6 @@ def calculate_analytics():
                     'trades_count': len(platform_df)
                 }
         
-        # Pair-specific analytics
         pair_metrics = {}
         unique_pairs = data['trading_pair'].unique()
         for pair in unique_pairs:
@@ -143,7 +167,6 @@ def calculate_analytics():
                     'trades_count': len(pair_df)
                 }
         
-        # Overall timeframe metrics
         if not data.empty:
             timeframe_data = {
                 'total_profit': data['profit_amount'].sum(),
@@ -171,7 +194,6 @@ def calculate_analytics():
     
     return analytics
 
-# Login page
 def login_page():
     set_theme()
     col1, col2, col3 = st.columns([1,2,1])
@@ -190,7 +212,6 @@ def login_page():
                 else:
                     st.error("Invalid credentials")
 
-# Dashboard page
 def dashboard_page():
     set_theme()
     st.title("📝 Trading Dashboard")
@@ -200,7 +221,7 @@ def dashboard_page():
         with col1:
             date = st.date_input("Date", value=datetime.now())
             trading_platform = st.selectbox("Trading Platform", TRADING_PLATFORMS)
-            trading_type = st.selectbox("Trading Type", ["Arbitrage", "Futures", "Forex", "Crypto"])
+            trading_type = st.selectbox("Trading Type", ["Arbitrage", "Futures", "Forex", "Crypto", "Options"])
             profit_percent = st.number_input("Profit Percentage", step=0.01, format="%.2f")
         with col2:
             profit_amount = st.number_input("Profit Amount (USDT)", step=0.01, format="%.2f")
@@ -236,7 +257,6 @@ def dashboard_page():
             st.session_state.analytics = calculate_analytics()
             st.success("Trade added successfully!")
 
-# Analytics page
 def analytics_page():
     set_theme()
     st.title("📊 Trading Analytics")
@@ -245,7 +265,6 @@ def analytics_page():
         st.warning("No analytics data available. Add trades first.")
         return
     
-    # Timeframe tabs
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Daily", "Weekly", "Monthly", "Quarterly", "Yearly", "All Time"
     ])
@@ -264,21 +283,27 @@ def analytics_page():
             data = st.session_state.analytics.get(timeframe, {})
             
             if not data.get('data', pd.DataFrame()).empty:
-                # Metrics
-                col1, col2, col3, col4, col5 = st.columns(5)
-                with col1:
-                    st.metric("Total Profit", f"${data['total_profit']:,.2f}",
-                            delta=f"{data['total_profit']/data['total_principal']*100:.2f}%" if data['total_principal'] > 0 else None)
-                with col2:
-                    st.metric("Avg Profit %", f"{data['avg_profit_pct']:.2f}%")
-                with col3:
-                    st.metric("Total Principal", f"${data['total_principal']:,.2f}")
-                with col4:
-                    st.metric("Win Rate", f"{data['win_rate']*100:.1f}%")
-                with col5:
-                    st.metric("Trades Count", data['trades_count'])
+                cols = st.columns(5)
+                metrics = [
+                    ("Total Profit", f"${data['total_profit']:,.2f}", 
+                     f"{data['total_profit']/data['total_principal']*100:.2f}%" if data['total_principal'] > 0 else None),
+                    ("Avg Profit %", f"{data['avg_profit_pct']:.2f}%", None),
+                    ("Total Principal", f"${data['total_principal']:,.2f}", None),
+                    ("Win Rate", f"{data['win_rate']*100:.1f}%", None),
+                    ("Trades Count", str(data['trades_count']), None)
+                ]
                 
-                # Platform and Pair tabs
+                for col, (title, value, delta) in zip(cols, metrics):
+                    with col:
+                        delta_class = "positive" if delta and float(delta.replace('%','')) >= 0 else "negative" if delta else ""
+                        st.markdown(f"""
+                        <div class="metric-tile">
+                            <div class="metric-title">{title}</div>
+                            <div class="metric-value">{value}</div>
+                            {f'<div class="metric-delta {delta_class}">↑ {delta}</div>' if delta else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                
                 platform_tab, pair_tab = st.tabs(["By Platform", "By Trading Pair"])
                 
                 with platform_tab:
@@ -345,7 +370,6 @@ def analytics_page():
                         )
                         st.plotly_chart(fig2, use_container_width=True)
                 
-                # Profit over time
                 st.subheader("Profit Trend")
                 time_df = data['data'].sort_values('date')
                 fig3 = px.line(
@@ -368,42 +392,54 @@ def analytics_page():
             else:
                 st.warning(f"No data available for {label} timeframe")
 
-# Tweets page
 def tweets_page():
     set_theme()
     st.title("🐦 Trading Feed")
     
-    # Profile header
     st.markdown(f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
         <div style="font-size: 3rem;">💰</div>
         <div style="margin-left: 15px;">
-            <h3 style="margin: 0; color: white;">{st.session_state.username}</h3>
-            <p style="margin: 0; color: #a8dadc;">@{st.session_state.username}</p>
+            <h3 style="margin: 0; color: white;">MicroBit-DB</h3>
+            <p style="margin: 0; color: #a8dadc;">@MicroBitTrades</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Display simplified tweets
     if st.session_state.posts:
-        for post in reversed(st.session_state.posts):  # Show newest first
-            with st.container():
-                st.write(f"**{post['trading_platform']} - {post['trading_pair']}**")
-                st.write(post['notes'])
-                
-                if post['screenshot']:
-                    try:
-                        image = Image.open(io.BytesIO(base64.b64decode(post['screenshot'])))
-                        st.image(image, caption="Trade Screenshot", width=300)
-                    except:
-                        st.warning("Could not display image")
-                
-                st.write(f"{post['reaction']} {post['date']}")
-                st.markdown("---")
+        for post in reversed(st.session_state.posts):
+            profit_class = "positive" if post['profit_amount'] >= 0 else "negative"
+            
+            st.markdown(f"""
+            <div class="tweet-card">
+                <div class="tweet-header">
+                    <strong>{post['trading_platform']} • {post['trading_type']} • {post['trading_pair']}</strong>
+                    <span>{post['date']}</span>
+                </div>
+                <p>{post['notes']}</p>
+                {f'<img src="data:image/png;base64,{post["screenshot"]}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;">' if post['screenshot'] else ''}
+                <div class="tweet-metrics">
+                    <div class="tweet-metric">
+                        <div>Profit</div>
+                        <div class="tweet-metric-value {profit_class}">${post['profit_amount']:,.2f}</div>
+                    </div>
+                    <div class="tweet-metric">
+                        <div>Profit %</div>
+                        <div class="tweet-metric-value {profit_class}">{post['profit_percent']:.2f}%</div>
+                    </div>
+                    <div class="tweet-metric">
+                        <div>Stake</div>
+                        <div class="tweet-metric-value">${post['total_stake']:,.2f}</div>
+                    </div>
+                    <div style="margin-left: auto; font-size: 1.5rem; display: flex; align-items: center;">
+                        {post['reaction']}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
         st.info("No trading updates yet")
 
-# Main app
 def main():
     if not st.session_state.authenticated:
         login_page()
